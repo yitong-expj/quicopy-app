@@ -28,12 +28,21 @@ Assign any text snippet to a global shortcut like `⌘⇧1`. Press the shortcut 
 ## Why QUICOPY?
 
 - ⚡ **Sub-100 ms response** — feels instant, no lag
-- 🎯 **Works everywhere** — browsers, editors, email, chat, AI tools
+- 🎯 **Works everywhere** — browsers, editors, email, chat, AI tools, **self-drawn terminals (Zed, VS Code)**
 - 🤖 **7 built-in AI prompt templates** — stop re-typing "think step by step"
 - 🪶 **Only 2.8 MB** — 100% native Swift, no Electron
 - 🔒 **Privacy-first** — all data stays on your Mac
 - ☁️ **Optional iCloud sync** — across your own Macs only
 - 💰 **$9.99 lifetime** — one-time purchase, no subscription
+
+## Latest: v1.1 (2026-04-21)
+
+- **Zed & VS Code terminal support** — global shortcuts now fire inside Zed's built-in terminal and VS Code's integrated terminal when Accessibility is granted. In v1.0 they silently did nothing (Carbon's `RegisterEventHotKey` doesn't dispatch when the frontmost app consumes the key event itself).
+- **Paste delivery rewritten** — verifies `Edit → Paste` is enabled before clicking and falls back to synthesized `⌘V` keystroke; robust against self-drawn text hosts.
+- **Error 1002 edge case fixed** — pressing a bound shortcut while QUICOPY's popover was visible no longer surfaces a harmless error toast.
+- No new entitlements, no new permission prompts.
+
+→ Technical deep-dive: [The macOS Global Shortcut That Won't Fire in Zed](https://www.quicopy.com/blog/macos-shortcut-dispatch-zed)
 
 ## Key Features
 
@@ -84,7 +93,8 @@ Lives in your menu bar. No Dock icon clutter. Zero background CPU when idle.
 - **macOS 13.0 (Ventura) or later**
 - Apple Silicon (M1/M2/M3/M4) or Intel
 - ~ 10 MB free disk space
-- Accessibility is **not required** — QUICOPY uses Automation (System Events) instead, which is less invasive
+- **Accessibility permission** — optional. Without it, QUICOPY works in all standard macOS apps (Chrome, Safari, VS Code editor, iTerm2, Ghostty, Slack, Mail, etc.) via Carbon's hotkey API. Grant Accessibility to unlock shortcut detection inside **self-drawn terminals** like Zed's built-in terminal and VS Code's integrated terminal.
+- **Automation permission** (System Events) — required for paste delivery. Prompted on first use.
 
 ## Pricing
 
@@ -106,8 +116,8 @@ Lives in your menu bar. No Dock icon clutter. Zero background CPU when idle.
 
 Under the hood:
 
-- **Shortcut capture**: `CGEvent Tap` monitors global keyboard input
-- **Text output**: `AppleScript System Events` simulates `⌘V` paste
+- **Shortcut capture**: `NSEvent.addGlobalMonitorForEvents` (with Accessibility, works in Zed / VS Code terminals) or Carbon `RegisterEventHotKey` (fallback, works in all standard apps). Backend switches automatically based on runtime permission state.
+- **Text output**: `NSPasteboard` snapshot + `AppleScript System Events` to simulate `⌘V` paste, then restore the clipboard. `CGEvent.post` is silently blocked by the App Sandbox, so this is the only portable path.
 - **Storage**: Sandboxed local file + optional iCloud CloudKit sync
 - **App Sandbox compliant** — distributed through Mac App Store
 
@@ -125,7 +135,7 @@ Yes — it works in every macOS app, including all web-based AI tools. The 7 bui
 No. All snippets stay on your Mac. Optional iCloud sync uses Apple's end-to-end encrypted iCloud infrastructure — only your own devices can read it.
 
 ### Does QUICOPY require Accessibility permission?
-No. QUICOPY uses Automation (System Events) which is less invasive than Accessibility. You grant Automation permission on first run.
+Accessibility is **optional**. Without it, QUICOPY works in all standard macOS apps via Carbon's hotkey API. Granting Accessibility (recommended) adds support for **self-drawn terminals** like Zed and VS Code's integrated terminal, where Carbon silently fails because the frontmost app consumes key events before dispatch. Paste delivery always uses Automation (System Events), prompted on first use.
 
 ### What keyboard shortcuts can I use?
 Any combination — modifiers (`⌘` `⌃` `⌥` `⇧`) plus any key. Function keys (F1–F12), number keys, letters all supported.
@@ -137,6 +147,9 @@ Any combination — modifiers (`⌘` `⌃` `⌥` `⇧`) plus any key. Function k
 - 🌐 **Website**: [www.quicopy.com](https://www.quicopy.com)
 - 📱 **Mac App Store**: [apps.apple.com/app/quicopy/id6761418490](https://apps.apple.com/app/quicopy/id6761418490)
 - 🚀 **Product Hunt**: [producthunt.com/products/quicopy](https://www.producthunt.com/products/quicopy)
+- 📖 **Engineering blog**:
+  - [Shipping Global Keyboard Shortcuts on macOS Sandbox](https://www.quicopy.com/blog/macos-sandbox-keyboard-shortcuts) — why `CGEvent.post` is silently blocked and the AppleScript workaround
+  - [The macOS Global Shortcut That Won't Fire in Zed](https://www.quicopy.com/blog/macos-shortcut-dispatch-zed) — Carbon vs. NSEvent dispatch in self-drawn terminals (v1.1 deep-dive)
 - 🔒 **Privacy Policy**: [www.quicopy.com/privacy](https://www.quicopy.com/privacy)
 - 💬 **Support**: [support@quicopy.com](mailto:support@quicopy.com)
 
@@ -147,7 +160,7 @@ Any combination — modifiers (`⌘` `⌃` `⌥` `⇧`) plus any key. Function k
 - **Language**: Swift (100% native)
 - **UI**: SwiftUI + AppKit
 - **Min OS**: macOS 13.0 (Ventura)
-- **Frameworks**: StoreKit 2, CloudKit, CGEvent, ScriptingBridge
+- **Frameworks**: StoreKit 2, CloudKit, NSEvent + Carbon (hotkey capture, two-tier), ScriptingBridge (paste)
 - **Distribution**: Mac App Store only (sandboxed)
 
 ## About
